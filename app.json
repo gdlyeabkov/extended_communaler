@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "name": "communaler_v2",
+    "slug": "communaler_v2",
+    "version": "1.0.0",
+    "assetBundlePatterns": [
+      "**/*"
+    ]
+  },
+  "name": "communaler_v2"
+}
