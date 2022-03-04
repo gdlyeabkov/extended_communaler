@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { StyleSheet, Text, View, Button, ScrollView, TouchableOpacity, TextInput, Switch } from 'react-native'
+import React, { useState, useEffect, createContext, useContext } from 'react'
+import { StyleSheet, Text, View, Button, ScrollView, TouchableOpacity, TextInput, Switch, Dimensions, Image } from 'react-native'
 import { Ionicons, Entypo, FontAwesome, Feather, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons'
 import { NavigationContainer } from '@react-navigation/native'
 import { createStackNavigator } from '@react-navigation/stack'
@@ -7,6 +7,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import * as SQLite from 'expo-sqlite'
 import { Dialog } from 'react-native-paper'
 import SelectDropdown from 'react-native-select-dropdown'
+import MapView from 'react-native-maps'
 // импорт TouchableOpacity, TextInput из 'react-native-gesture-handler' приводит к ошибкам нужно импортировать из react-native
 // import { TouchableOpacity, TextInput } from 'react-native-gesture-handler'
 
@@ -65,6 +66,100 @@ export default function App() {
             title: 'Добавить лицевой счет'
           }}
         />
+        <Stack.Screen
+          name="ContactsActivity"
+          component={ContactsActivity}
+          options={{
+            title: 'Контакты',
+            headerRight: () => <FontAwesome name="phone" size={24} color="black" />
+          }}
+        />
+        <Stack.Screen
+          name="PaymentsAndTransferActivity"
+          component={PaymentsAndTransferActivity}
+          options={{
+            title: 'Платежи и переводы'
+          }}
+        />
+        <Stack.Screen
+          name="PaymentActivity"
+          component={PaymentActivity}
+          options={{
+            headerTitle: () => (
+              <View
+                style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}
+              >
+                <FontAwesome name="circle" size={24} color="black" />
+                <Text style={{ marginLeft: 15 }}>
+                  {
+                    '00000000'
+                  }
+                </Text>
+              </View>
+            )
+          }}
+        />
+        <Stack.Screen
+          name="TransferActivity"
+          component={TransferActivity}
+          options={{
+            headerTitle: () => (
+              <View
+                style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}
+              >
+                <FontAwesome name="circle" size={24} color="black" />
+                <Text style={{ marginLeft: 15 }}>
+                  {
+                    '00000000'
+                  }
+                </Text>
+              </View>
+            ),
+            headerRight: () => <Entypo name="flashlight" size={24} color="black" />
+          }}
+        />
+        <Stack.Screen
+          name="ProfileDataActivity"
+          component={ProfileDataActivity}
+          options={{
+            title: 'Личные данные'
+          }}
+        />
+        <Stack.Screen
+          name="ProfileContactsActivity"
+          component={ProfileContactsActivity}
+          options={{
+            title: 'Контакты'
+          }}
+        />
+        <Stack.Screen
+          name="ProfilePasswordActivity"
+          component={ProfilePasswordActivity}
+          options={{
+            title: 'Изменить пароль'
+          }}
+        />
+        <Stack.Screen
+          name="ProfileSubsActivity"
+          component={ProfileSubsActivity}
+          options={{
+            title: 'Подписки'
+          }}
+        />
+        <Stack.Screen
+          name="ProfileSecurityActivity"
+          component={ProfileSecurityActivity}
+          options={{
+            title: 'Безопасность'
+          }}
+        />
+        <Stack.Screen
+          name="ProfileAccountsActivity"
+          component={ProfileAccountsActivity}
+          options={{
+            title: 'Связанные аккаунты'
+          }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   )
@@ -76,29 +171,86 @@ export function MainActivity({ navigation }) {
   
   const [password, setPassword] = useState('')
 
+  const [users, setUsers] = useState([
+    
+  ])
+
+  const [isDialogVisible, setIsDialogVisible] = useState(false)
+
+  const [dialoagMessage, setDialogMessage] = useState('')
+
   const goToActivity = (navigation, activityName, params = {}) => {
     navigation.navigate(activityName, params)
   }
 
+  const loginUser = () => {
+    db.transaction(async transaction => {
+      const sqlStatement = "SELECT * FROM users;"
+      await transaction.executeSql(sqlStatement, [], (tx, receivedUsers) => {
+        let tempReceivedUsers = []
+        Array.from(receivedUsers.rows).forEach((userItemRow, userRowIdx) => {
+          const user = Object.values(receivedUsers.rows.item(userRowIdx))
+          tempReceivedUsers = [
+            ...tempReceivedUsers,
+            {
+              id: user[0],
+              login: user[1],
+              password: user[2]
+            }
+          ]
+        })
+        setUsers(tempReceivedUsers)
+      })
+      let userId = 0
+      const isUserFound = users.some((user) => {
+        const userLogin = user.login
+        const userPassword = user.password
+        const isLoginDetect = userLogin === login
+        const isPasswordDetect = userPassword === password
+        const isUserDetect = isLoginDetect && isPasswordDetect
+        if (isUserDetect) {
+          userId = user.id
+        }
+        return isUserDetect
+      })
+      if (isUserFound) {
+        goToActivity(navigation, 'PersonalAreaActivity', {
+          userId: userId
+        })
+        // goToActivity(navigation, 'MainPageActivity', {
+        //   userId: userId
+        // })
+      } else {
+        setDialogMessage('Пользователь не найден')
+        setIsDialogVisible(true)
+      }
+    })
+  }
+
   return (
     <View style={styles.mainActivityContainer}>
-      <Text style={styles.mainActivityContainerWelcomeLabel}>
+      <Text
+        style={styles.mainActivityContainerWelcomeLabel}
+      >
         Добро пожаловать
       </Text>
       <TextInput
         value={login}
         onChangeText={(value) => setLogin(value)}
+        style={styles.mainActivityContainerInputField}
       />
       <TextInput
+        secureTextEntry={true}
         value={password}
         onChangeText={(value) => setPassword(value)}
+        style={styles.mainActivityContainerInputField}
       />
       <Text style={styles.mainActivityContainerForgotPasswordLabel}>
         Забыли пароль?
       </Text>
       <Button
         title={'Войти'}
-        onPress={() => goToActivity(navigation, 'PersonalAreaActivity')}
+        onPress={() => loginUser()}
         style={styles.mainActivityContainerLoginBtn}
       />
       <Text
@@ -130,67 +282,97 @@ export function MainActivity({ navigation }) {
       <View
         style={styles.mainActivityContainerHelpRow}
       >
-        <View
+        <TouchableOpacity
+          onPress={() => goToActivity(navigation, 'ContactsActivity')}
           style={styles.mainActivityContainerHelpRowItem}
         >
           <Ionicons name="location" size={24} color="black" />
           <Text>
             Контакты
           </Text>          
-        </View>
-        <View
+        </TouchableOpacity>
+        <TouchableOpacity
           style={styles.mainActivityContainerHelpRowItem}
         >
           <Entypo name="help-with-circle" size={24} color="black" />
           <Text>
             Техподдержка
           </Text>
-        </View>
+        </TouchableOpacity>
       </View>
       <Text style={styles.mainActivityContainerHelpOfficialSitesLabel}>
         Официальные сайты  
       </Text>
+      <Dialog
+        visible={isDialogVisible}
+        onDismiss={() => setIsDialogVisible(false)}>
+        <Dialog.Title>Сообщение</Dialog.Title>
+        <Dialog.Content>
+          <Text>
+            {
+              dialoagMessage
+            }
+          </Text>
+        </Dialog.Content>
+        <Dialog.Actions>
+          <Button title="ОК" onPress={() => setIsDialogVisible(false)} />
+        </Dialog.Actions>
+      </Dialog>
     </View>
   )
 }
 
+const DEFAULT_CONTEXT = {
+  userId: false
+}
+
+const PersonalAreaTabNavigatorContext = createContext(DEFAULT_CONTEXT)
+
 const Tab = createBottomTabNavigator()
 
-export function PersonalAreaActivity() {
+
+export function PersonalAreaActivity({ route }) {
+  
+  const { userId } = route.params
+
+  console.log(`userId: ${userId}`)
+
   return (
-    <Tab.Navigator
-      screenOptions={{
-        tabBarShowIcon: true
-      }}
-    >
-      <Tab.Screen
-        name="Главная"
-        component={MainPageActivity}
-      />
-      <Tab.Screen
-        name="Услуги"
-        component={ServicesPageActivity}
-        options={{
-          headerRight: () => <MaterialCommunityIcons name="ticket-percent" size={48} color="black" />
+    <PersonalAreaTabNavigatorContext.Provider value={{ userId }}>
+      <Tab.Navigator
+        screenOptions={{
+          tabBarShowIcon: true
         }}
-      />
-      <Tab.Screen
-        name="Вопросы"
-        component={QuestionsPageActivity}
-      />
-      <Tab.Screen
-        name="Чат"
-        component={ChatPageActivity}
-      />
-      <Tab.Screen
-        name="Еще"
-        component={MorePageActivity}
-      />
-    </Tab.Navigator>
+      >
+        <Tab.Screen
+          name="Главная"
+          component={MainPageActivity}
+        />
+        <Tab.Screen
+          name="Услуги"
+          component={ServicesPageActivity}
+          options={{
+            headerRight: () => <MaterialCommunityIcons name="ticket-percent" size={48} color="black" />
+          }}
+        />
+        <Tab.Screen
+          name="Вопросы"
+          component={QuestionsPageActivity}
+        />
+        <Tab.Screen
+          name="Чат"
+          component={ChatPageActivity}
+        />
+        <Tab.Screen
+          name="Еще"
+          component={MorePageActivity}
+        />
+      </Tab.Navigator>
+    </PersonalAreaTabNavigatorContext.Provider>
   )
 }
 
-export function MainPageActivity({ navigation }) {
+export function MainPageActivity({ navigation, route }) {
   
   const [amounts, setAmounts] = useState([
     {
@@ -198,8 +380,59 @@ export function MainPageActivity({ navigation }) {
     }
   ])
 
+  const [currentAmount, setCurrentAmount] = useState({
+    id: 0,
+    number: '00000000',
+    cost: 0
+  })
+
+  const { userId } = useContext(PersonalAreaTabNavigatorContext)
+    
+  useEffect(() => {
+    db.transaction(async transaction => {
+      const sqlStatement = `SELECT * FROM amounts WHERE user = ${userId};`
+      await transaction.executeSql(sqlStatement, [], (tx, receivedAmounts) => {
+        let tempReceivedAmounts = []
+        Array.from(receivedAmounts.rows).forEach((amountRow, amountRowIdx) => {
+          const amount = Object.values(receivedAmounts.rows.item(amountRowIdx))
+          tempReceivedAmounts = [
+            ...tempReceivedAmounts,
+            {
+              id: amount[0],
+              number: amount[2],
+              cost: amount[6]
+            }
+          ]
+        })
+        setAmounts(tempReceivedAmounts)
+      })
+    })
+  }, [userId])
+
+  useEffect(() => {
+    if (amounts.length >= 1) {
+      // setCurrentAmount(amounts[0])
+      setCurrentAmount({
+        id: amounts[0].id,
+        cost: amounts[0].cost,
+        number: amounts[0].number
+      })
+    }
+  }, [amounts])
+
   const goToActivity = (navigation, activityName, params = {}) => {
     navigation.navigate(activityName, params)
+  }
+
+  const getCurrentAmountStyle = (amount) => {
+    if (currentAmount.id === amount.id) {
+      return {
+        backgroundColor: 'rgb(235, 235, 235)'
+      }
+    }
+    return {
+      backgroundColor: 'rgb(200, 200, 200)'
+    }
   }
   
   return (
@@ -211,7 +444,7 @@ export function MainPageActivity({ navigation }) {
         <TouchableOpacity
           style={styles.mainPageActivityContainerTab}
           onPress={() => goToActivity(navigation, 'AddAmountActivity', {
-            userId: 0
+            userId: userId
           })}
         >
           <Feather name="plus" size={24} color="black" />
@@ -219,20 +452,28 @@ export function MainPageActivity({ navigation }) {
         {
           amounts.map((amount, amountIndex) => {
             return (
-              <View
+              <TouchableOpacity
                 key={amountIndex}
-                style={styles.mainPageActivityContainerTab}
+                style={
+                  [
+                    styles.mainPageActivityContainerTab,
+                    getCurrentAmountStyle(amount)
+                  ]
+                }
+                onPress={() => setCurrentAmount(amount)}
               >
                 <Text>
-                  Номер счета
+                  {
+                    amount.number
+                  }
                 </Text>
-              </View>
+              </TouchableOpacity>
             )
           })
         }
       </ScrollView>
       {
-        true ?
+        currentAmount.id !== 0 ?
           <View style={styles.mainPageActivityContainerAmount}>
             <View style={styles.mainPageActivityContainerAmountHeader}>
               <Text style={styles.mainPageActivityContainerAmountHeaderAddress}>
@@ -242,7 +483,7 @@ export function MainPageActivity({ navigation }) {
             </View>
             <Text style={styles.mainPageActivityContainerAmountCostLabel}>
               {
-                true ?
+                currentAmount.cost >= 0 ?
                   'Переплата'
                 :
                   'Сумма к оплате'
@@ -251,14 +492,14 @@ export function MainPageActivity({ navigation }) {
             <Text
               style={styles.mainPageActivityContainerAmountCostValue}
               color={
-                true ?
+                currentAmount.cost < 0 ?
                   'rgb(255, 0, 0)'
                 :
                   'rgb(0, 150, 0)'
               }
             >
               {
-                '1000'
+                currentAmount.cost
               }
             </Text>
             <View style={styles.mainPageActivityContainerAmountMoreBtnWrapContainer}>
@@ -284,22 +525,38 @@ export function MainPageActivity({ navigation }) {
               </View>
             </View>
             <View style={styles.mainPageActivityContainerAmountActions}>
-              <View style={styles.mainPageActivityContainerAmountActionsItem}>
+              <TouchableOpacity
+                style={styles.mainPageActivityContainerAmountActionsItem}
+                onPress={() => goToActivity(navigation, 'PaymentActivity', {
+                  userId: userId,
+                  amountId: currentAmount.id,
+                  amountNumber: currentAmount.number,
+                  amountCost: currentAmount.cost
+                })}
+              >
                 <FontAwesome5 name="credit-card" size={48} color="black" />
                 <Text style={styles.mainPageActivityContainerAmountActionsItemLabel}>
                   {
                     'Оплатить\nбез'
                   }
                 </Text>
-              </View>
-              <View style={styles.mainPageActivityContainerAmountActionsItem}>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.mainPageActivityContainerAmountActionsItem}
+                onPress={() => goToActivity(navigation, 'TransferActivity', {
+                  userId: userId,
+                  amountId: currentAmount.id,
+                  amountNumber: currentAmount.number,
+                  amountCost: currentAmount.cost
+                })}
+              >
                 <Entypo name="calculator" size={48} color="black" />
                 <Text style={styles.mainPageActivityContainerAmountActionsItemLabel}>
                   {
                     'Передать\nпоказания'
                   }
                 </Text>
-              </View>
+              </TouchableOpacity>
             </View>
           </View>
         :
@@ -313,30 +570,111 @@ export function MainPageActivity({ navigation }) {
 
 export function ServicesPageActivity() {
   return (
-    <View>
-      
-    </View>
+    <Tab.Navigator
+      screenOptions={{
+        tabBarShowIcon: true
+      }}
+    >
+      <Tab.Screen
+        name="Каталог"
+        component={ServicesCatalogActivity}
+      />
+      <Tab.Screen
+        name="Заказанные"
+        component={OrderedServicesActivity}
+      />
+    </Tab.Navigator>
   )
 }
 
 export function QuestionsPageActivity() {
   return (
-    <View>
-      
-    </View>
+    <Tab.Navigator
+      screenOptions={{
+        tabBarShowIcon: true
+      }}
+    >
+      <Tab.Screen
+        name="Задать вопрос"
+        component={AskQuestionActivity}
+      />
+      <Tab.Screen
+        name="История"
+        component={QuestionsHistoryActivity}
+      />
+    </Tab.Navigator>
   )
 }
 
 export function ChatPageActivity() {
+  
+  const [message, setMessage] = useState('')
+  
+  const [messages, setMessages] = useState([
+
+  ])
+
+  const addMessage = () => {
+    const updatedMessages = messages
+    updatedMessages.push(message)
+    setMessages(updatedMessages)
+    setMessage('')
+  }
+
   return (
-    <View>
-      
+    <View style={styles.chatPageActivityContainer}>
+      <View
+        style={styles.chatPageActivityContainerScrollWrap}
+      >
+        <ScrollView
+          style={styles.chatPageActivityContainerScroll}
+        >
+          <View style={styles.chatPageActivityContainerMessage}>
+            <Text style={styles.chatPageActivityContainerMessageLabel}>
+              {
+                'Здраствуйте! Введите свое обращение,\nпожалуйста.'
+              }
+            </Text>
+          </View>
+          {
+            messages.map((message, messageIndex) => {
+              return (
+                <View
+                  key={messageIndex}
+                  style={styles.chatPageActivityContainerMessage}
+                >
+                  <Text style={styles.chatPageActivityContainerMessageLabel}>
+                    {
+                      message
+                    }
+                  </Text>
+                </View>
+              )
+            })
+          }
+        </ScrollView>
+      </View>
+      <View style={styles.chatPageActivityContainerFooter}>
+        <TextInput
+          style={styles.chatPageActivityContainerFooterInput}
+          value={message}
+          onChangeText={(value) => setMessage(value)}
+        />
+        <Ionicons
+          name="md-send-sharp"
+          size={24}
+          color="black"
+          onPress={() => addMessage()}
+        />
+      </View>
     </View>
   )
 }
 
 export function MorePageActivity({ navigation }) {
   
+  const { userId } = useContext(PersonalAreaTabNavigatorContext)
+
   const goToActivity = (navigation, activityName, params = {}) => {
     navigation.navigate(activityName, params)
   }
@@ -346,7 +684,9 @@ export function MorePageActivity({ navigation }) {
       <View style={styles.morePageActivityContainerItem}>
         <TouchableOpacity
           style={styles.morePageActivityContainerItemAside}
-          onPress={() => goToActivity(navigation, 'ProfileActivity')}
+          onPress={() => goToActivity(navigation, 'ProfileActivity', {
+            userId: userId
+          })}
         >
           <FontAwesome name="user-circle-o" size={24} color="black" />
           <Text style={styles.morePageActivityContainerItemLabel}>
@@ -355,7 +695,10 @@ export function MorePageActivity({ navigation }) {
         </TouchableOpacity>
         <Entypo name="chevron-right" size={24} color="black" />
       </View>
-      <View style={styles.morePageActivityContainerItem}>
+      <TouchableOpacity
+        onPress={() => goToActivity(navigation, 'ContactsActivity')}
+        style={styles.morePageActivityContainerItem}
+      >
         <View style={styles.morePageActivityContainerItemAside}>
           <Ionicons name="location" size={24} color="black" />
           <Text style={styles.morePageActivityContainerItemLabel}>
@@ -363,8 +706,11 @@ export function MorePageActivity({ navigation }) {
           </Text>
         </View>
         <Entypo name="chevron-right" size={24} color="black" />
-      </View>
-      <View style={styles.morePageActivityContainerItem}>
+      </TouchableOpacity>
+      <TouchableOpacity
+        onPress={() => goToActivity(navigation, 'PaymentsAndTransferActivity')}
+        style={styles.morePageActivityContainerItem}
+      >
         <View style={styles.morePageActivityContainerItemAside}>
           <Ionicons name="information-circle" size={24} color="black" />
           <Text style={styles.morePageActivityContainerItemLabel}>
@@ -372,18 +718,73 @@ export function MorePageActivity({ navigation }) {
           </Text>
         </View>
         <Entypo name="chevron-right" size={24} color="black" />
-      </View>
+      </TouchableOpacity>
     </View>
   )
 }
 
-export function ProfileActivity() {
+export function ProfileActivity({ navigation, route }) {
+
+  const { userId } = route.params
+
+  const [users, setUsers] = useState([
+
+  ])
+  
+  const [user, setUser] = useState({
+    id: 0,
+    login: '',
+    password: '',
+    firstName: '',
+    secondName: '',
+    thirdName: ''
+  })
+
+  const goToActivity = (navigation, activityName, params = {}) => {
+    navigation.navigate(activityName, params)
+  }
+
+  useEffect(() => {
+    db.transaction(async transaction => {
+      const sqlStatement = `SELECT * FROM users WHERE _id = ${userId};`
+      await transaction.executeSql(sqlStatement, [], (tx, receivedUsers) => {
+        let tempReceivedUsers = []
+        Array.from(receivedUsers.rows).forEach((userItemRow, userRowIdx) => {
+          const user = Object.values(receivedUsers.rows.item(userRowIdx))
+          tempReceivedUsers = [
+            ...tempReceivedUsers,
+            {
+              id: user[0],
+              login: user[1],
+              password: user[2],
+              firstName: user[8],
+              secondName: user[9],
+              thirdName: user[10]
+            }
+          ]
+        })
+        setUsers(tempReceivedUsers)
+      })
+    })
+  }, [userId])
+
+  useEffect(() => {
+    const countUsers = users.length
+    const isUserFound = countUsers >= 1
+    if (isUserFound) {
+      const detectedUser = users[0]
+      setUser(detectedUser)
+    }
+  }, [users])
+
   return (
     <View style={styles.profileActivityContainer}>
       <View style={styles.profileActivityContainerAvatarContainer}>
         <View style={styles.profileActivityContainerAvatar}>
           <Text style={styles.profileActivityContainerAvatarLabel}>
-            ДГ
+            {
+              `${user.firstName.length ? user.firstName[0].toUpperCase() : ''}${user.secondName.length ? user.secondName[0].toUpperCase() : ''}`
+            }
           </Text>
         </View>
       </View>
@@ -397,40 +798,71 @@ export function ProfileActivity() {
           </Text>
           <Entypo name="chevron-right" size={24} color="black" />
         </View>
-        <View style={styles.profileActivityContainerItem}>
+        <TouchableOpacity
+          style={styles.profileActivityContainerItem}
+          onPress={() => goToActivity(navigation, 'ProfileContactsActivity', {
+            userId: userId
+          })}
+        >
           <Text style={styles.profileActivityContainerItemLabel}>
-            Личные данные
+            Контакты
           </Text>
           <Entypo name="chevron-right" size={24} color="black" />
-        </View>
-        <View style={styles.profileActivityContainerItem}>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.profileActivityContainerItem}
+          onPress={() => goToActivity(navigation, 'ProfilePasswordActivity', {
+            userId: userId
+          })}
+        >
           <Text style={styles.profileActivityContainerItemLabel}>
-            Личные данные
+            Изменить пароль
           </Text>
           <Entypo name="chevron-right" size={24} color="black" />
-        </View>
-        <View style={styles.profileActivityContainerItem}>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.profileActivityContainerItem}
+          onPress={() => goToActivity(navigation, 'ProfileSubsActivity', {
+            userId: userId
+          })}
+        >
           <Text style={styles.profileActivityContainerItemLabel}>
-            Личные данные
+            Подписки
           </Text>
           <Entypo name="chevron-right" size={24} color="black" />
-        </View>
-        <View style={styles.profileActivityContainerItem}>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.profileActivityContainerItem}
+          onPress={() => goToActivity(navigation, 'ProfileSecurityActivity', {
+            userId: userId
+          })}
+        >
           <Text style={styles.profileActivityContainerItemLabel}>
-            Личные данные
+            Безопасность
           </Text>
           <Entypo name="chevron-right" size={24} color="black" />
-        </View>
-        <View style={styles.profileActivityContainerItem}>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.profileActivityContainerItem}
+          onPress={() => goToActivity(navigation, 'ProfileAccountsActivity', {
+            userId: userId
+          })}
+        >
           <Text style={styles.profileActivityContainerItemLabel}>
-            Личные данные
+            Связанные аккаунты
           </Text>
           <Entypo name="chevron-right" size={24} color="black" />
-        </View>
+        </TouchableOpacity>
       </View>
-      <Text style={styles.profileActivityContainerLogoutLabel}>
-        ВЫЙТИ ИЗ АККАУНТА
-      </Text>
+      <TouchableOpacity
+        onPress={() => goToActivity(navigation, 'PersonalAreaActivity', {
+          userId: userId
+        })}
+      >
+        <Text style={styles.profileActivityContainerLogoutLabel}>
+          ВЫЙТИ ИЗ АККАУНТА
+        </Text>
+      </TouchableOpacity>
     </View>
   )
 }
@@ -476,6 +908,7 @@ export function RegisterActivity({ navigation }) {
       let sqlStatement = `INSERT INTO \"users\"(login, password, address, phone, name, email, gender, firstname, secondname, thirdname, born) VALUES (\"${login}\", \"${password}\", \"\", \"${phone}\", \"${name}", ${rawIsEmail}, \"\", \"\", \"\", \"\", \"\");`
       db.transaction(transaction => {
         transaction.executeSql(sqlStatement, [], (tx, receivedIndicators) => {
+          
           goToActivity(navigation, 'PersonalAreaActivity')    
         })
       })
@@ -771,10 +1204,922 @@ export function AddAmountActivity({ navigation, route }) {
   )
 }
 
+export function ContactsActivity() {
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        tabBarShowIcon: true
+      }}
+    >
+      <Tab.Screen
+        name="Список"
+        component={ContactsListActivity}
+      />
+      <Tab.Screen
+        name="Карта"
+        component={ContactsMapActivity}
+      />
+    </Tab.Navigator>
+  )
+}
+
+export function ContactsListActivity() {
+  
+  const [provider, setProvider] = useState('Поставщик услуг')
+
+  const providers = [
+    'Поставщик услуг',
+    'АО Мосэенргосбыт',
+    'ООО МосОблЕИРЦ'
+  ]
+  
+  return (
+    <View style={styles.contactsActivityContainer}>
+      <SelectDropdown
+        defaultButtonText={'Поставщик услуг'}
+        data={providers}
+        onSelect={(selectedItem, index) => {
+          setProvider(selectedItem)
+        }}
+        buttonTextAfterSelection={(selectedItem, index) => {
+          return selectedItem
+        }}
+        rowTextForSelection={(item, index) => {
+          return item
+        }}
+        style={styles.contactsActivityContainerDropDown}
+        renderDropdownIcon={() => <Entypo name="chevron-down" size={24} color="black" />}
+      />
+      {
+        (provider === 'Поставщик услуг' || provider === 'АО Мосэенргосбыт') ?
+          <View style={styles.contactsActivityContainerItem}>
+            <Text>
+              {
+                'Управление ЕИРЦ \"Пушкино\"(Пушкинский район)\nСеверо-Восточный отдел ЕИРЦ'
+              }
+            </Text>
+            <Text>
+              {
+                '141200, Московская область, г. Пушкино, ул.\nОстровсого, д. 22'
+              }
+            </Text>
+            <View style={styles.contactsActivityContainerItemFooter}>
+              <Ionicons name="time-outline" size={24} color="black" />
+              <Text style={styles.contactsActivityContainerItemFooterLabel}>
+                {
+                  'Пн-пт: с 8-00 до 20-00'
+                }
+              </Text>
+            </View>
+          </View>
+        :
+          <View>
+
+          </View>
+      }
+      {
+        (provider === 'Поставщик услуг' || provider === 'ООО МосОблЕИРЦ') ?
+        <View style={styles.contactsActivityContainerItem}>
+          <Text>
+            {
+              'Управление ЕИРЦ \"Пушкино\"(Пушкинский район)\nСеверо-Восточный отдел ЕИРЦ'
+            }
+          </Text>
+          <Text>
+            {
+              '141200, Московская область, г. Пушкино, ул.\nОстровсого, д. 22'
+            }
+          </Text>
+          <View style={styles.contactsActivityContainerItemFooter}>
+            <Ionicons name="time-outline" size={24} color="black" />
+            <Text style={styles.contactsActivityContainerItemFooterLabel}>
+              {
+                'Пн-пт: с 8-00 до 20-00'
+              }
+            </Text>
+          </View>
+        </View>
+        :
+        <View>
+
+        </View>
+      }
+    </View>
+  )
+}
+
+export function ContactsMapActivity() {
+  return (
+    <View style={styles.contactsMapActivityMapContainer}>
+      <MapView style={styles.contactsMapActivityMap} />
+    </View>
+  )
+}
+
+export function PaymentsAndTransferActivity() {
+  return (
+    <View style={styles.paymentsAndTransfersActivityContainer}>
+      <Text style={styles.paymentsAndTransfersActivityContainerHeader}>
+        Оплата услуг
+      </Text>
+      <View style={styles.paymentsAndTransfersActivityContainerColumns}>
+        <View style={styles.paymentsAndTransfersActivityContainerColumn}>
+          <View style={styles.paymentsAndTransfersActivityContainerItem}>
+            <Ionicons name="phone-portrait-outline" size={48} color="black" />
+            <Text style={styles.paymentsAndTransfersActivityContainerItemLabel}>
+              {
+                'Мобильная связь'
+              }
+            </Text>
+          </View>
+          <View style={styles.paymentsAndTransfersActivityContainerItem}>
+            <Ionicons name="home-sharp" size={48} color="black" />
+            <Text style={styles.paymentsAndTransfersActivityContainerItemLabel}>
+              {
+                'Коммунальные\nплатежи'
+              }
+            </Text>
+          </View>
+        </View>
+        <View style={styles.paymentsAndTransfersActivityContainerColumn}>
+          <View style={styles.paymentsAndTransfersActivityContainerItem}>
+            <FontAwesome5 name="wifi" size={48} color="black" />
+            <Text style={styles.paymentsAndTransfersActivityContainerItemLabel}>
+              {
+                'Интернет, ТВ и\nТелефония'
+              }
+            </Text>
+          </View>
+          <View style={styles.paymentsAndTransfersActivityContainerItem}>
+            <Ionicons name="phone-portrait-outline" size={48} color="black" />
+            <Text style={styles.paymentsAndTransfersActivityContainerItemLabel}>
+              {
+                'Мобильная связь'
+              }
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  )
+}
+
+export function AskQuestionActivity() {
+  
+  const providers = [
+    'Поставщик услуг',
+    'ООО МосОблЕИРЦ',
+    'АО Мосэенргосбыт'
+  ]
+
+  const [provider, setProvider] = useState('Поставщик услуг')
+
+    
+  const numbers = [
+    
+  ]
+
+  const [number, setNumber] = useState('')
+
+    
+  const topics = [
+    
+  ]
+
+  const [topic, setTopic] = useState('')
+  
+  return (
+    <View>
+      <SelectDropdown
+        defaultButtonText={'Поставщик услуг'}
+        data={providers}
+        onSelect={(selectedItem, index) => {
+          setProvider(selectedItem)
+        }}
+        buttonTextAfterSelection={(selectedItem, index) => {
+          return selectedItem
+        }}
+        rowTextForSelection={(item, index) => {
+          return item
+        }}
+        style={styles.contactsActivityContainerDropDown}
+        renderDropdownIcon={() => <Entypo name="chevron-down" size={24} color="black" />}
+      />
+      <SelectDropdown
+        defaultButtonText={'Лицевой счет'}
+        data={numbers}
+        onSelect={(selectedItem, index) => {
+          setNumber(selectedItem)
+        }}
+        buttonTextAfterSelection={(selectedItem, index) => {
+          return selectedItem
+        }}
+        rowTextForSelection={(item, index) => {
+          return item
+        }}
+        style={styles.contactsActivityContainerDropDown}
+        renderDropdownIcon={() => <Entypo name="chevron-down" size={24} color="black" />}
+      />
+      <SelectDropdown
+        defaultButtonText={'Тема вопроса'}
+        data={topics}
+        onSelect={(selectedItem, index) => {
+          setTopic(selectedItem)
+        }}
+        buttonTextAfterSelection={(selectedItem, index) => {
+          return selectedItem
+        }}
+        rowTextForSelection={(item, index) => {
+          return item
+        }}
+        style={styles.contactsActivityContainerDropDown}
+        renderDropdownIcon={() => <Entypo name="chevron-down" size={24} color="black" />}
+      />
+      <Button
+        onPress={() => {
+
+        }}
+        title={'Продолжить'}
+      />
+    </View>
+  )
+}
+
+export function QuestionsHistoryActivity() {
+  
+  const [amounts, setAmounts] = useState([
+
+  ])
+  
+  return (
+    <View
+      style={styles.questionsHistoryActivityContainer}
+    >
+      <Text
+        style={styles.questionsHistoryActivityContainerSelectQuestionLabel}
+      >
+        Выберите вопрос
+      </Text>
+      {
+        amounts.map((amount, amountIndex) => {
+          return (
+            <View
+              key={amountIndex}
+              style={styles.questionsHistoryActivityContainerQuestion}
+            >
+              <Text
+                style={styles.questionsHistoryActivityContainerQuestionLabel}
+              >
+                Номер счета
+              </Text>
+              <Entypo name="chevron-right" size={24} color="black" />
+            </View>
+          )
+        })
+      }
+    </View>
+  )
+}
+
+export function ServicesCatalogActivity() {
+  
+  const [address, setAddress] = useState('\n')
+
+  const addresses = [
+    '\n'
+  ]
+
+  const [serviceType, setServiceType] = useState('Все')
+
+  const servicesTypes = [
+    'Все',
+    'Умные приборы учета',
+    'Электромонтажные работы',
+    'Дезинфекция, дезинсекция и чистка\nпомещений',
+    'Ремонт бытовой техники',
+    'Ремонт сматфонов',
+    'Сантехника',
+    'Установка/замена водосчетчиков \"ОХТА\",\n\"Пульс\", \"ВСКМ\", \"НОРМА\", \"ЭХО НОМ\"',
+    'Установка/замена водосчетчиков Itelma'
+  ]
+  
+  return (
+    <View>
+      <Text>
+        Отобразить услуги
+      </Text>
+      <Text>
+        Номер лицевого счета
+      </Text>
+      <SelectDropdown
+        defaultButtonText={'\n'}
+        data={address}
+        onSelect={(selectedItem, index) => {
+          setAddress(selectedItem)
+        }}
+        buttonTextAfterSelection={(selectedItem, index) => {
+          return selectedItem
+        }}
+        rowTextForSelection={(item, index) => {
+          return item
+        }}
+        style={styles.contactsActivityContainerDropDown}
+        renderDropdownIcon={() => <Entypo name="chevron-down" size={24} color="black" />}
+      />
+      <Text>
+        Вид услуги
+      </Text>
+      <SelectDropdown
+        defaultButtonText={'Все'}
+        data={servicesTypes}
+        onSelect={(selectedItem, index) => {
+          setServiceType(selectedItem)
+        }}
+        buttonTextAfterSelection={(selectedItem, index) => {
+          return selectedItem
+        }}
+        rowTextForSelection={(item, index) => {
+          return item
+        }}
+        style={styles.contactsActivityContainerDropDown}
+        renderDropdownIcon={() => <Entypo name="chevron-down" size={24} color="black" />}
+      />
+    </View>
+  )
+}
+
+export function OrderedServicesActivity() {
+  
+  const [address, setAddress] = useState('\n')
+
+  const addresses = [
+    '\n'
+  ]
+
+  const [period, setPeriod] = useState('за последние 3 месяца')
+
+  const periods = [
+    'за последние 3 месяца',
+    'за последние 6 месяцев',
+    'за год',
+    'за три года'
+  ]
+  
+  return (
+    <View>
+      <Text>
+        Отобразить услуги
+      </Text>
+      <Text>
+        Номер лицевого счета
+      </Text>
+      <SelectDropdown
+        defaultButtonText={'\n'}
+        data={address}
+        onSelect={(selectedItem, index) => {
+          setAddress(selectedItem)
+        }}
+        buttonTextAfterSelection={(selectedItem, index) => {
+          return selectedItem
+        }}
+        rowTextForSelection={(item, index) => {
+          return item
+        }}
+        style={styles.contactsActivityContainerDropDown}
+        renderDropdownIcon={() => <Entypo name="chevron-down" size={24} color="black" />}
+      />
+      <Text>
+        Период
+      </Text>
+      <SelectDropdown
+        defaultButtonText={'за последние 3 месяца'}
+        data={periods}
+        onSelect={(selectedItem, index) => {
+          setPeriod(selectedItem)
+        }}
+        buttonTextAfterSelection={(selectedItem, index) => {
+          return selectedItem
+        }}
+        rowTextForSelection={(item, index) => {
+          return item
+        }}
+        style={styles.contactsActivityContainerDropDown}
+        renderDropdownIcon={() => <Entypo name="chevron-down" size={24} color="black" />}
+      />
+      <Text>
+        {
+          'За последние 3 месяца заказанные услуги отсутствуют'
+        }
+      </Text>
+    </View>
+  )
+}
+
+export function PaymentActivity({ navigation, route }) {
+
+  const visaImg = require('./assets/visa.png')
+  
+  const masterCardImg = require('./assets/master_card.png')
+
+  const smartCardImg = require('./assets/smart_card.png')
+
+  const googlePayImg = require('./assets/google_pay.png')
+
+  const { userId, amountId, amountNumber, amountCost } = route.params
+
+  const [cost, setCost] = useState('')
+  
+  const [isInsurance, setIsInsurance] = useState(false)
+  
+  const [isAgree, setIsAgree] = useState(true)
+
+  const [paymentMethod, setPaymentMethod] = useState('Банковская карта')
+
+  const goToActivity = (navigation, activityName, params = {}) => {
+    navigation.navigate(activityName, params)
+  }
+
+  const pay = () => {
+    db.transaction(transaction => {
+      let updatedCost = amountCost
+      updatedCost += Number.parseInt(cost)
+      let sqlStatement = `UPDATE amounts SET cost = ${updatedCost} WHERE _id = ${amountId};`
+      transaction.executeSql(sqlStatement, [], (tx, receivedAmounts) => {
+        goToActivity(navigation, 'PersonalAreaActivity', {
+          userId: userId
+        })  
+      })
+    })
+  }
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerTitle: () => (
+        <View
+          style={styles.paymentActivityHeader}
+        >
+          <FontAwesome name="circle" size={24} color="black" />
+          <Text style={styles.paymentActivityHeaderLabel}>
+            {
+              amountNumber
+            }
+          </Text>
+        </View>
+      )
+    })
+  }, [userId])
+
+  return (
+    <View
+      style={styles.paymentActivityContainer}
+    >
+      <Text style={styles.paymentActivityContainerAddressLabel}>
+        Адресс проживания
+      </Text>
+      <Text style={styles.paymentActivityContainerCostLabel}>
+        Итого к оплате
+      </Text>
+      <TextInput
+        style={styles.paymentActivityContainerCostInput}
+        value={cost}
+        onChangeText={(value) => setCost(value)}
+      />
+      <Text
+        style={styles.paymentActivityContainerMethodLabel}
+      >
+        Выберите способ оплаты
+      </Text>
+      <TouchableOpacity
+        onPress={() => setPaymentMethod('Google Pay')}
+        style={styles.paymentActivityContainerMethod}
+      >
+        <View
+          style={styles.paymentActivityContainerMethodAside}
+        >
+          <Image
+            style={styles.paymentActivityContainerMethodImg}
+            source={googlePayImg}
+          />
+          <Text
+            style={styles.paymentActivityContainerMethodName}
+          >
+            Google Pay
+          </Text>
+        </View>
+        {
+          paymentMethod === 'Google Pay' ?
+            <Entypo name="check" size={24} color="black" />
+          :
+            <View>
+
+            </View>
+        }
+      </TouchableOpacity>
+      <TouchableOpacity
+        onPress={() => setPaymentMethod('Банковская карта')}
+        style={styles.paymentActivityContainerMethod}
+      >
+        <View
+          style={styles.paymentActivityContainerMethodAside}
+        >
+          <Image
+            style={styles.paymentActivityContainerMethodImg}
+            source={smartCardImg}
+          />
+          <Text
+            style={styles.paymentActivityContainerMethodName}
+          >
+            Банковской картой
+          </Text>
+        </View>
+        {
+          paymentMethod === 'Банковская карта' ?
+            <Entypo name="check" size={24} color="black" />
+          :
+            <View>
+
+            </View>
+        }
+      </TouchableOpacity>
+      <View
+        style={styles.paymentActivityContainerAgreement}
+      >
+        <Text
+          style={styles.paymentActivityContainerAgreementLabel}
+        >
+          Добровольное страхование: 95,00 руб.
+        </Text>
+        <Switch
+          value={isInsurance}
+          onValueChange={(value) => setIsInsurance(value)}
+        />
+      </View>
+      <View
+        style={styles.paymentActivityContainerAgreement}
+      >
+        <Text
+          style={styles.paymentActivityContainerAgreementLabel}
+        >
+          Я согласен с правилами оплаты
+        </Text>
+        <Switch
+          value={isAgree}
+          onValueChange={(value) => setIsAgree(value)}
+        />
+      </View>
+      <Text
+        style={styles.paymentActivityContainerDetailsLabel}
+      >
+        Подробнее
+      </Text>
+      <Text
+        style={styles.paymentActivityContainerSupportedCardsLabel}
+      >
+        К оплате принимаются
+      </Text>
+      <View
+        style={styles.paymentActivityContainerSupportedCards}
+      >
+        <Image
+          style={styles.paymentActivityContainerSupportedCard}
+          source={visaImg}
+        />
+        <Image
+          style={styles.paymentActivityContainerSupportedCard}
+          source={masterCardImg}
+        />
+        <Image
+          style={styles.paymentActivityContainerSupportedCard}
+          source={smartCardImg}
+        />
+      </View>
+      <View
+        style={styles.paymentActivityContainerCashback}
+      >
+        <Text
+          style={styles.paymentActivityContainerCashbackLabel}
+        >
+          Кешбэк 1% при оплате картой
+        </Text>
+        <View
+          style={styles.paymentActivityContainerCashbackInfo}
+        >
+          <Text
+            style={styles.paymentActivityContainerCashbackInfoLabel}
+          >
+            {
+              'Зарегестрирйуйте карту один раз в Программе\nлояльности для держателй карт\nдо совершения\nоплаты и получайте кешбэк\nпосле каждого платежа.'
+            }
+          </Text>
+          <Entypo name="chevron-right" size={24} color="black" />
+        </View>
+        <Text
+          style={styles.paymentActivityContainerCashbackDetailsLabel}
+        >
+          Подробнее
+        </Text>
+      </View>
+      <Button
+        color={'rgb(200, 200, 0)'}
+        title="Оплатить"
+        onPress={() => pay()}
+      />
+    </View>
+  )
+
+}
+
+export function TransferActivity({ navigation, route }) {
+
+  const { userId, amountId, amountNumber, amountCost } = route.params
+
+  const goToActivity = (navigation, activityName, params = {}) => {
+    navigation.navigate(activityName, params)
+  }
+
+  const transfer = () => {
+    goToActivity(navigation, 'PersonalAreaActivity', {
+      userId: userId
+    })
+  }
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerTitle: () => (
+        <View
+          style={styles.paymentActivityHeader}
+        >
+          <FontAwesome name="circle" size={24} color="black" />
+          <Text style={styles.paymentActivityHeaderLabel}>
+            {
+              amountNumber
+            }
+          </Text>
+        </View>
+      )
+    })
+  }, [userId])
+
+  return (
+    <ScrollView>
+      <Button
+        color={'rgb(150, 150, 150)'}
+        title={'Передать показания'}
+        onPress={() => transfer()}
+      />
+    </ScrollView>
+  )
+
+}
+
+export function ProfileDataActivity({ route }) {
+  
+  const { userId } = route.params
+  
+  return (
+    <View>
+      <Text>
+        {
+          userId
+        }
+      </Text>
+    </View>
+  )
+}
+
+export function ProfileContactsActivity({ route }) {
+  
+  const { userId } = route.params
+  
+  return (
+    <View>
+      <Text>
+        {
+          userId
+        }
+      </Text>
+      <View
+        style={styles.profileContactsActivityContainerDetailRow}
+      >
+        <View
+          style={styles.profileContactsActivityContainerDetailRowAside}
+        >
+          <Text
+            style={styles.profileContactsActivityContainerDetailRowAsideLabel}
+          >
+            E-mail
+          </Text>
+          <Text
+            style={styles.profileContactsActivityContainerDetailRowAsideName}
+          >
+            xxx888xxx888xxx888xxx@mail.ru
+          </Text>
+        </View>
+        <Entypo name="chevron-right" size={24} color="black" />
+      </View>
+      <View
+        style={styles.profileContactsActivityContainerRow}
+      >
+        <Entypo name="check" size={24} color="black" />
+        <Text
+          style={styles.profileContactsActivityContainerRowLabel}
+        >
+          Телефон подтвержден
+        </Text>
+      </View>
+      <View
+        style={styles.profileContactsActivityContainerDetailRow}
+      >
+        <View
+          style={styles.profileContactsActivityContainerDetailRowAside}
+        >
+          <Text
+            style={styles.profileContactsActivityContainerDetailRowAsideLabel}
+          >
+            Телефон
+          </Text>
+          <Text
+            style={styles.profileContactsActivityContainerDetailRowAsideName}
+          >
+            89999999999
+          </Text>
+        </View>
+        <Entypo name="chevron-right" size={24} color="black" />
+      </View>
+      <View
+        style={styles.profileContactsActivityContainerRow}
+      >
+        <Entypo name="check" size={24} color="black" />
+        <Text
+          style={styles.profileContactsActivityContainerRowLabel}
+        >
+          Телефон подтвержден
+        </Text>
+      </View>
+    </View>
+  )
+}
+
+
+export function ProfilePasswordActivity({ route }) {
+  
+  const { userId } = route.params
+  
+  return (
+    <View>
+      <Text>
+        {
+          userId
+        }
+      </Text>
+    </View>
+  )
+}
+
+
+export function ProfileSubsActivity({ route }) {
+  
+  const { userId } = route.params
+  
+  return (
+    <View
+      style={styles.profileSubsActivityContainer}
+    >
+      <Text>
+        {
+          userId
+        }
+      </Text>
+      <View
+        style={styles.profileSubsActivityContainerItem}
+      >
+        <Text
+          style={styles.profileSubsActivityContainerItemLabel}
+        >
+          Рекламно-информационная рассылка
+        </Text>
+        <Entypo name="chevron-right" size={24} color="black" />
+      </View>
+      <View
+        style={styles.profileSubsActivityContainerItem}
+      >
+        <Text
+          style={styles.profileSubsActivityContainerItemLabel}
+        >
+          {
+            'Рассылка счетов ООО \"МосОблЕИРЦ\"'
+          }
+        </Text>
+        <Entypo name="chevron-right" size={24} color="black" />
+      </View>
+    </View>
+  )
+}
+
+
+export function ProfileSecurityActivity({ route }) {
+  
+  const { userId } = route.params
+  
+  const [isPinCode, setIsPinCode] = useState(false)
+
+  return (
+    <View
+      style={styles.profileSecurityActivityContainer}
+    >
+      <Text>
+        {
+          userId
+        }
+      </Text>
+      <Text
+        style={styles.profileSecurityActivityContainerHeader}
+      >
+        Использование PIN-кода
+      </Text>
+      <View
+        style={styles.profileSecurityActivityContainerRow}
+      >
+        <Text
+          style={styles.profileSecurityActivityContainerRowLabel}
+        >
+          Вход по PIN-коду
+        </Text>
+        <Switch
+          value={isPinCode}
+          onValueChange={(value) => setIsPinCode(value)}
+        />
+      </View>
+      <Text
+        style={styles.profileSecurityActivityContainerHelpLabel}
+      >
+        {
+          'При входе в приложение потребуется ввести код\nдля подтверждения доступа.'
+        }
+      </Text>
+      <View
+        style={styles.profileSecurityActivityContainerRow}
+      >
+        <Text
+          style={styles.profileSecurityActivityContainerRowLabel}
+        >
+          Вход по PIN-коду
+        </Text>
+        <Entypo name="chevron-right" size={24} color="black" />
+      </View>
+    </View>
+  )
+}
+
+export function ProfileAccountsActivity({ route }) {
+  
+  const { userId } = route.params
+  
+  return (
+    <View
+      style={styles.profileAccountsActivityContainer}
+    >
+      <Text>
+        {
+          userId
+        }
+      </Text>
+      <View
+        style={styles.profileAccountsActivityContainerRow}
+      >
+        <View
+          style={styles.profileAccountsActivityContainerRowAside}
+        >
+          <Ionicons name="chatbubble-sharp" size={24} color={'rgb(255, 0, 0)'} />
+          <Text
+            style={styles.profileAccountsActivityContainerRowAsideLabel}
+          >
+            {
+              'Официальный сайт Мэра\nМосквы (mos.ru)'
+            }
+          </Text>
+        </View>
+        <View>
+          <Button
+            title={'Связать'}
+          />
+        </View>
+      </View>
+    </View>
+  )
+}
+
 const styles = StyleSheet.create({
+  mainActivityContainer: {
+
+  },
   mainActivityContainerWelcomeLabel: {
     fontSize: 24,
     marginVertical: 25
+  },
+  mainActivityContainerInputField: {
+    borderBottomColor: 'rgb(0, 0, 0)',
+    borderBottomWidth: 1
   },
   mainActivityContainerForgotPasswordLabel: {
     textAlign: 'center'
@@ -814,7 +2159,7 @@ const styles = StyleSheet.create({
   mainPageActivityContainerTab: {
     paddingHorizontal: 15,
     paddingVertical: 5,
-    backgroundColor: 'rgb(200, 200, 200)',
+    // backgroundColor: 'rgb(200, 200, 200)',
     marginHorizontal: 5,
     borderTopStartRadius: 8,
     borderTopEndRadius: 8
@@ -882,7 +2227,13 @@ const styles = StyleSheet.create({
   morePageActivityContainerItem: {
     display: 'flex',
     flexDirection: 'row',
-    justifyContent: 'space-between'
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: 'rgb(175, 175, 175)',
+    borderRadius: 8,
+    padding: 15,
+    margin: 15
   },
   morePageActivityContainerItemAside: {
     display: 'flex',
@@ -973,5 +2324,290 @@ const styles = StyleSheet.create({
     display: 'flex',
     flexDirection: 'row',
     justifyContent: 'space-between'
-  }
+  },
+  contactsActivityContainer: {
+
+  },
+  contactsActivityContainerDropDown: {
+
+  },
+  contactsActivityContainerItem: {
+    backgroundColor: 'rgb(255, 255, 255)',
+    padding: 15
+  },
+  contactsActivityContainerItemFooter: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  contactsActivityContainerItemFooterLabel: {
+    marginLeft: 25,
+    color: 'rgb(200, 200, 200)'
+  },
+  contactsMapActivityMapContainer: {
+    height: 500
+  },
+  contactsMapActivityMap: {
+    width: Dimensions.get('window').width,
+    height: '100%'
+  },
+  paymentsAndTransfersActivityContainer: {
+
+  },
+  paymentsAndTransfersActivityContainerHeader: {
+    fontSize: 36,
+    textAlign: 'center'
+  },
+  paymentsAndTransfersActivityContainerColumns: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'center'
+  },
+  paymentsAndTransfersActivityContainerColumn: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    width: '50%'
+  },
+  paymentsAndTransfersActivityContainerItem: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center'
+  },
+  paymentsAndTransfersActivityContainerItemLabel: {
+    color: 'rgb(200, 200, 0)',
+    textAlign: 'center'
+  },
+  chatPageActivityContainer: {
+
+  },
+  chatPageActivityContainerScroll: {
+  
+  },
+  chatPageActivityContainerScrollWrap: {
+    height: Dimensions.get('window').height / 100 * 70
+  },
+  chatPageActivityContainerMessage: {
+    padding: 15,
+    margin: 15,
+    backgroundColor: 'rgb(255, 255, 255)',
+    width: '35%'
+  },
+  chatPageActivityContainerMessageLabel: {
+    color: 'rgb(200, 200, 200)'
+  },
+  chatPageActivityContainerFooter: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-between'
+  },
+  chatPageActivityContainerFooterInput: {
+    width: '75%'
+  },
+  questionsHistoryActivityContainer: {
+
+  },
+  questionsHistoryActivityContainerSelectQuestionLabel: {
+    fontSize: 18
+  },
+  questionsHistoryActivityContainerQuestion: {
+    backgroundColor: 'rgb(255, 255, 255)',
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 15,
+    margin: 15,
+    borderBottomColor: 'rgb(175, 175, 175)',
+    borderWidth: 1
+  },
+  questionsHistoryActivityContainerQuestionLabel: {
+    
+  },
+  paymentActivityHeader: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  paymentActivityHeaderLabel: {
+    marginLeft: 15
+  },
+  paymentActivityContainer: {
+
+  },
+  paymentActivityContainerAddressLabel: {
+
+  },
+  paymentActivityContainerCostLabel: {
+    textAlign: 'center'
+  },
+  paymentActivityContainerCostInput: {
+    fontSize: 24,
+    textAlign: 'center'
+  },
+  paymentActivityContainerMethodLabel: {
+    textAlign: 'center'
+  },
+  paymentActivityContainerMethod: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-between'
+  },
+  paymentActivityContainerMethodAside: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  paymentActivityContainerMethodImg: {
+    width: 25,
+    height: 25
+  },
+  paymentActivityContainerMethodName: {
+    marginLeft: 15
+  },
+  paymentActivityContainerAgreement: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-between'
+  },
+  paymentActivityContainerAgreementLabel: {
+
+  },
+  paymentActivityContainerDetailsLabel: {
+    textAlign: 'center'
+  },
+  paymentActivityContainerSupportedCardsLabel: {
+    textAlign: 'center'
+  },
+  paymentActivityContainerSupportedCards: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-around'
+  },
+  paymentActivityContainerSupportedCard: {
+    
+  },
+  paymentActivityContainerCashback: {
+    display: 'flex',
+    flexDirection: 'column',
+    backgroundColor: 'rgb(225, 225, 255)'
+  },
+  paymentActivityContainerCashbackInfo: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  paymentActivityContainerCashbackInfoLabel: {
+
+  }, 
+  paymentActivityContainerCashbackDetailsLabel: {
+
+  },
+  profileAccountsActivityContainer: {
+
+  },
+  profileAccountsActivityContainerRow: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgb(150, 150, 150)'
+  },
+  profileAccountsActivityContainerRowAside: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  profileAccountsActivityContainerRowAsideLabel: {
+    marginLeft: 75
+  },
+  profileSecurityActivityContainer: {
+
+  },
+  profileSecurityActivityContainerHeader: {
+    color: 'rgb(0, 0, 255)',
+    fontWeight: '900',
+    padding: 15,
+    borderBottomColor: 'rgb(150, 150, 150)',
+    borderBottomWidth: 1
+  },
+  profileSecurityActivityContainerRow: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 15,
+    borderBottomColor: 'rgb(150, 150, 150)',
+    borderBottomWidth: 1
+  },
+  profileSecurityActivityContainerRowLabel: {
+    fontSize: 18
+  },
+  profileSecurityActivityContainerHelpLabel: {
+    color: 'rgb(200, 200, 200)',
+    fontWeight: '900',
+    padding: 15,
+    borderBottomColor: 'rgb(150, 150, 150)',
+    borderBottomWidth: 1
+  },
+  profileSubsActivityContainer: {
+
+  },
+  profileSubsActivityContainerItem: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 15,
+    borderBottomColor: 'rgb(150, 150, 150)',
+    borderBottomWidth: 1
+  },
+  profileSubsActivityContainerItemLabel: {
+    fontSize: 18
+  },
+  profileContactsActivityContainer: {
+
+  },
+  profileContactsActivityContainerDetailRow: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 15,
+    borderBottomColor: 'rgb(150, 150, 150)',
+    borderBottomWidth: 1,
+    alignItems: 'center',
+    backgroundColor: 'rgb(255, 255, 255)'
+  },
+  profileContactsActivityContainerDetailRowAside: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  profileContactsActivityContainerDetailRowAsideLabel: {
+    color: 'rgb(200, 200, 200)',
+    fontSize: 18
+  },
+  profileContactsActivityContainerDetailRowAsideName: {
+    marginLeft: 75,
+    fontSize: 16
+  },
+  profileContactsActivityContainerRow: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    padding: 15,
+    borderBottomColor: 'rgb(150, 150, 150)',
+    borderBottomWidth: 1,
+    alignItems: 'center',
+    backgroundColor: 'rgb(255, 255, 255)'
+  },
+  profileContactsActivityContainerRowLabel: {
+    color: 'rgb(0, 0, 255)',
+    fontSize: 14,
+    marginLeft: 75
+  } 
 })
