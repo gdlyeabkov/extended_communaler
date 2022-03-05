@@ -1,11 +1,32 @@
 import React, { useState, useEffect, createContext, useContext } from 'react'
-import { StyleSheet, Text, View, Button, ScrollView, TouchableOpacity, TextInput, Switch, Dimensions, Image } from 'react-native'
-import { Ionicons, Entypo, FontAwesome, Feather, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons'
+import {
+  StyleSheet,
+  Text,
+  View,
+  Button,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Switch,
+  Dimensions,
+  Image
+} from 'react-native'
+import {
+  Ionicons,
+  Entypo,
+  FontAwesome,
+  Feather,
+  FontAwesome5,
+  MaterialCommunityIcons
+} from '@expo/vector-icons'
 import { NavigationContainer } from '@react-navigation/native'
 import { createStackNavigator } from '@react-navigation/stack'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import * as SQLite from 'expo-sqlite'
-import { Dialog } from 'react-native-paper'
+import { 
+  Dialog,
+  RadioButton
+} from 'react-native-paper'
 import SelectDropdown from 'react-native-select-dropdown'
 import MapView from 'react-native-maps'
 // импорт TouchableOpacity, TextInput из 'react-native-gesture-handler' приводит к ошибкам нужно импортировать из react-native
@@ -122,7 +143,18 @@ export default function App() {
           name="ProfileDataActivity"
           component={ProfileDataActivity}
           options={{
-            title: 'Личные данные'
+            title: 'Личные данные',
+            headerRight: () => (
+              <TouchableOpacity
+                onPress={() => {
+
+                }}
+              >
+                <Text>
+                  Сохранить
+                </Text>
+              </TouchableOpacity>
+            )
           }}
         />
         <Stack.Screen
@@ -177,7 +209,7 @@ export function MainActivity({ navigation }) {
 
   const [isDialogVisible, setIsDialogVisible] = useState(false)
 
-  const [dialoagMessage, setDialogMessage] = useState('')
+  const [dialogMessage, setDialogMessage] = useState('')
 
   const goToActivity = (navigation, activityName, params = {}) => {
     navigation.navigate(activityName, params)
@@ -310,7 +342,7 @@ export function MainActivity({ navigation }) {
         <Dialog.Content>
           <Text>
             {
-              dialoagMessage
+              dialogMessage
             }
           </Text>
         </Dialog.Content>
@@ -792,12 +824,17 @@ export function ProfileActivity({ navigation, route }) {
 
       </Text>
       <View style={styles.profileActivityContainerItems}>
-        <View style={styles.profileActivityContainerItem}>
+        <TouchableOpacity
+          onPress={() => goToActivity(navigation, 'ProfileDataActivity', {
+            userId: userId
+          })}
+          style={styles.profileActivityContainerItem}
+        >
           <Text style={styles.profileActivityContainerItemLabel}>
             Личные данные
           </Text>
           <Entypo name="chevron-right" size={24} color="black" />
-        </View>
+        </TouchableOpacity>
         <TouchableOpacity
           style={styles.profileActivityContainerItem}
           onPress={() => goToActivity(navigation, 'ProfileContactsActivity', {
@@ -883,7 +920,7 @@ export function RegisterActivity({ navigation }) {
 
   const [isDialogVisible, setIsDialogVisible] = useState(false)
 
-  const [dialoagMessage, setDialogMessage] = useState('')
+  const [dialogMessage, setDialogMessage] = useState('')
 
   const goToActivity = (navigation, activityName, params = {}) => {
     navigation.navigate(activityName, params)
@@ -1025,7 +1062,7 @@ export function RegisterActivity({ navigation }) {
         <Dialog.Content>
           <Text>
             {
-              dialoagMessage
+              dialogMessage
             }
           </Text>
         </Dialog.Content>
@@ -1872,17 +1909,247 @@ export function TransferActivity({ navigation, route }) {
 
 }
 
-export function ProfileDataActivity({ route }) {
+export function ProfileDataActivity({ navigation, route }) {
   
   const { userId } = route.params
+
+  const [firstName, setFirstName] = useState('')
+
+  const [secondName, setSecondName] = useState('')
+
+  const [thirdName, setThirdName] = useState('')
+
+  const [gender, setGender] = useState('')
+
+  const borns = [
+    '\n'
+  ]
+
+  const [born, setBorn] = useState('')
   
+  const [isDialogVisible, setIsDialogVisible] = useState(false)
+
+  const [dialogMessage, setDialogMessage] = useState('')
+
+  const [users, setUsers] = useState([
+
+  ])
+
+  const [user, setUser] = useState({
+    id: 0,
+    login: '',
+    password: '',
+    firstName: '',
+    secondName: '',
+    thirdName: '',
+    gender: '',
+    born: ''
+  })
+
+  const saveData = () => {
+    const firstNameFieldLength = firstName.length
+    const isFirstNameFieldFilled = firstNameFieldLength >= 1
+    const secondNameFieldLength = secondName.length
+    const isSecondNameFieldFilled = secondNameFieldLength >= 1
+    const thirdNameFieldLength = thirdName.length
+    const isThirdNameFieldFilled = thirdNameFieldLength >= 1
+    const isFieldsFilled = isFirstNameFieldFilled && isSecondNameFieldFilled && isThirdNameFieldFilled
+    const isCanUpdate = isFieldsFilled
+    if (isCanUpdate) {
+      const born = ''
+      let sqlStatement = `UPDATE users SET firstname = ${firstName}, secondname = ${secondName}, firstname = ${thirdName}, gender = ${gender}, born = ${born} WHERE _id = ${userId};`
+      db.transaction(transaction => {
+        transaction.executeSql(sqlStatement, [], (tx, receivedUsers) => {  
+          goToActivity(navigation, 'PersonalAreaActivity', {
+            userId: userId
+          })  
+        })
+      })
+    } else {
+      let msg = ''
+      const isFieldsNotFilled = !isFieldsFilled
+      if (isFieldsNotFilled) {
+        const isFirstNameFieldNotFilled = !isFirstNameFieldFilled
+        if (isFirstNameFieldNotFilled) {
+          msg += 'Поле \"Фамилия пользователя\" не заполнено\n'
+        }
+        const isSecondNameFieldNotFilled = !isSecondNameFieldFilled
+        if (isSecondNameFieldNotFilled) {
+          msg += 'Поле \"Имя пользователя\" не заполнено\n'
+        }
+        const isThirdNameFieldNotFilled = !isThirdNameFieldFilled
+        if (isThirdNameFieldNotFilled) {
+          msg += 'Поле \"Отчество пользователя\" не заполнено\n'
+        }
+        setIsDialogVisible(true)
+        setDialogMessage(msg)
+      }
+    }
+  }
+
+  const goToActivity = (navigation, activityName, params = {}) => {
+    navigation.navigate(activityName, params)
+  }
+
+  useEffect(() => {
+    db.transaction(async transaction => {
+      const sqlStatement = `SELECT * FROM users WHERE _id = ${userId};`
+      await transaction.executeSql(sqlStatement, [], (tx, receivedUsers) => {
+        let tempReceivedUsers = []
+        Array.from(receivedUsers.rows).forEach((userItemRow, userRowIdx) => {
+          const user = Object.values(receivedUsers.rows.item(userRowIdx))
+          tempReceivedUsers = [
+            ...tempReceivedUsers,
+            {
+              id: user[0],
+              login: user[1],
+              password: user[2],
+              firstName: user[8],
+              secondName: user[9],
+              thirdName: user[10]
+            }
+          ]
+        })
+        setUsers(tempReceivedUsers)
+      })
+    })
+  }, [userId])
+
+  useEffect(() => {
+    const countUsers = users.length
+    const isUserFound = countUsers >= 1
+    if (isUserFound) {
+      const detectedUser = users[0]
+      setUser(detectedUser)
+      
+    }
+  }, [users])
+
+  navigation.setOptions({
+    headerRight: () => (
+      <TouchableOpacity
+        onPress={() => saveData()}
+      >
+        <Text>
+          Сохранить
+        </Text>
+      </TouchableOpacity>
+    )
+  })
+
   return (
-    <View>
+    <View
+      style={styles.profileDataActivityContainer}
+    >
       <Text>
         {
           userId
         }
       </Text>
+      <Text
+        style={styles.profileDataActivityContainerLabel}
+      >
+        Фамилия пользователя
+      </Text>
+      <TextInput
+        value={firstName}
+        onChangeText={(value) => setFirstName(value)}
+        style={styles.profileDataActivityContainerInputField}
+      />
+      <Text
+        style={styles.profileDataActivityContainerLabel}
+      >
+        Имя пользователя
+      </Text>
+      <TextInput
+        value={secondName}
+        onChangeText={(value) => setSecondName(value)}
+        style={styles.profileDataActivityContainerInputField}
+      />
+      <Text
+        style={styles.profileDataActivityContainerLabel}
+      >
+        Отчество пользователя
+      </Text>
+      <TextInput
+        value={thirdName}
+        onChangeText={(value) => setThirdName(value)}
+        style={styles.profileDataActivityContainerInputField}
+      />
+      <Text
+        style={styles.profileDataActivityContainerLabel}
+      >
+        Дата рождения
+      </Text>
+      <SelectDropdown
+        defaultButtonText={'\n'}
+        data={borns}
+        onSelect={(selectedItem, index) => {
+          setBorn(selectedItem)
+        }}
+        buttonTextAfterSelection={(selectedItem, index) => {
+          return selectedItem
+        }}
+        rowTextForSelection={(item, index) => {
+          return item
+        }}
+        style={styles.addAmountActivityContainerDropDown}
+        renderDropdownIcon={() => <Entypo name="chevron-down" size={24} color="black" />}
+      />
+      <Text
+        style={styles.profileDataActivityContainerLabel}
+      >
+        Пол
+      </Text>
+      <View
+        style={styles.profileDataActivityContainerRow}
+      >
+        <View
+          style={styles.profileDataActivityContainerRowItem}
+        >
+          <RadioButton
+            value="Мужской"
+            label="Мужской"
+            status={gender.checked === 'Мужской' ? 'checked' : 'unchecked'}
+            onPress={() => { setGender({ checked: 'Мужской' }) }}
+          />
+          <Text
+            style={styles.profileDataActivityContainerRowItemLabel}
+          >
+            Мужской
+          </Text>
+        </View>
+        <View
+          style={styles.profileDataActivityContainerRowItem}
+        >
+          <RadioButton
+            value="Женский"
+            label="Женский"
+            status={gender.checked === 'Женский' ? 'checked' : 'unchecked'}
+            onPress={() => { setGender({ checked: 'Женский' }) }}
+          />
+          <Text
+            style={styles.profileDataActivityContainerRowItemLabel}
+          >
+            Женский
+          </Text>
+        </View>
+      </View>
+      <Dialog
+        visible={isDialogVisible}
+        onDismiss={() => setIsDialogVisible(false)}>
+        <Dialog.Title>Сообщение</Dialog.Title>
+        <Dialog.Content>
+          <Text>
+            {
+              dialogMessage
+            }
+          </Text>
+        </Dialog.Content>
+        <Dialog.Actions>
+          <Button title="ОК" onPress={() => setIsDialogVisible(false)} />
+        </Dialog.Actions>
+      </Dialog>
     </View>
   )
 }
@@ -1961,17 +2228,183 @@ export function ProfileContactsActivity({ route }) {
 }
 
 
-export function ProfilePasswordActivity({ route }) {
+export function ProfilePasswordActivity({ navigation, route }) {
   
   const { userId } = route.params
   
+  const [currentPassword, setCurrentPassword] = useState('')
+  
+  const [newPassword, setNewPassword] = useState('')
+
+  const [confirmPassword, setConfirmPassword] = useState('')
+  
+  const [isDialogVisible, setIsDialogVisible] = useState(false)
+
+  const [dialogMessage, setDialogMessage] = useState('')
+
+  const [users, setUsers] = useState([
+
+  ])
+
+  const [user, setUser] = useState({
+    id: 0,
+    login: '',
+    password: '',
+    firstName: '',
+    secondName: '',
+    thirdName: ''
+  })
+
+  const goToActivity = (navigation, activityName, params = {}) => {
+    navigation.navigate(activityName, params)
+  }
+
+  const changePassword = () => {
+    const userPassword = user.password
+    const isPasswordMatches = currentPassword === userPassword
+    const isPasswordsMatches = newPassword === confirmPassword
+    const currentPasswordFieldLength = currentPassword.length
+    const isCurrentPasswordFieldFilled = currentPasswordFieldLength >= 1
+    const newPasswordFieldLength = newPassword.length
+    const isNewPasswordFieldFilled = newPasswordFieldLength >= 1
+    const confirmPasswordFieldLength = confirmPassword.length
+    const isConfirmPasswordFieldFilled = confirmPasswordFieldLength >= 1
+    const isFieldsFilled = isCurrentPasswordFieldFilled && isNewPasswordFieldFilled && isConfirmPasswordFieldFilled
+    const isCanUpdate = isPasswordsMatches && isPasswordMatches && isFieldsFilled
+    if (isCanUpdate) {
+      let sqlStatement = `UPDATE users SET password = ${newPassword} WHERE _id = ${userId};`
+      db.transaction(transaction => {
+        transaction.executeSql(sqlStatement, [], (tx, receivedUsers) => {  
+          goToActivity(navigation, 'PersonalAreaActivity', {
+            userId: userId
+          })  
+        })
+      })
+    } else {
+      let msg = ''
+      const isFieldsNotFilled = !isFieldsFilled
+      if (isFieldsNotFilled) {
+        const isCurrentPasswordFieldNotFilled = !isCurrentPasswordFieldFilled
+        if (isCurrentPasswordFieldNotFilled) {
+          msg += 'Поле \"Текущий пароль\" не заполнено\n'
+        }
+        const isNewPasswordFieldNotFilled = !isNewPasswordFieldFilled
+        if (isNewPasswordFieldNotFilled) {
+          msg += 'Поле \"Новый пароль\" не заполнено\n'
+        }
+        const isConfirmPasswordFieldNotFilled = !isConfirmPasswordFieldFilled
+        if (isConfirmPasswordFieldNotFilled) {
+          msg += 'Поле \"Повторите пароль\" не заполнено\n'
+        }
+        const isPasswordNotMatches = !isPasswordMatches
+        if (isPasswordNotMatches) {
+          msg += 'Поле \"Текущий пароль\" не совпадает\n'
+        }
+        const isPasswordsNotMatches = !isPasswordsMatches
+        if (isPasswordsNotMatches) {
+          msg += 'Поля \"Новый пароль\" и \"Повторите пароль\" не совпадают\n'
+        }
+        setIsDialogVisible(true)
+        setDialogMessage(msg)
+      }
+    }
+  }
+
+  useEffect(() => {
+    db.transaction(async transaction => {
+      const sqlStatement = `SELECT * FROM users WHERE _id = ${userId};`
+      await transaction.executeSql(sqlStatement, [], (tx, receivedUsers) => {
+        let tempReceivedUsers = []
+        Array.from(receivedUsers.rows).forEach((userItemRow, userRowIdx) => {
+          const user = Object.values(receivedUsers.rows.item(userRowIdx))
+          tempReceivedUsers = [
+            ...tempReceivedUsers,
+            {
+              id: user[0],
+              login: user[1],
+              password: user[2],
+              firstName: user[8],
+              secondName: user[9],
+              thirdName: user[10]
+            }
+          ]
+        })
+        setUsers(tempReceivedUsers)
+      })
+    })
+  }, [userId])
+
+  useEffect(() => {
+    const countUsers = users.length
+    const isUserFound = countUsers >= 1
+    if (isUserFound) {
+      const detectedUser = users[0]
+      setUser(detectedUser)
+    }
+  }, [users])
+
   return (
-    <View>
+    <View
+      style={styles.profilePasswordActivityContainer}
+    >
       <Text>
         {
           userId
         }
       </Text>
+      <Text
+        style={styles.profilePasswordActivityContainerHelpLabel}
+      >
+        {
+          'После изменения пароля произойдет выход\nиз аккаунта на всех устройствах, сайтах и\nприложениях, где вошли с текущим паролем.'
+        }
+      </Text>
+      <TextInput
+        placeholder={'Текущий пароль'}
+        secureTextEntry={true}
+        value={currentPassword}
+        onChangeText={(value) => setCurrentPassword(value)}
+        style={styles.profilePasswordActivityContainerInputField}
+      />
+      <TextInput
+        placeholder={'Новый пароль'}
+        secureTextEntry={true}
+        value={newPassword}
+        onChangeText={(value) => setNewPassword(value)}
+        style={styles.profilePasswordActivityContainerInputField}
+      />
+      <TextInput
+        placeholder={'Повторите пароль'}
+        secureTextEntry={true}
+        value={confirmPassword}
+        onChangeText={(value) => setConfirmPassword(value)}
+        style={styles.profilePasswordActivityContainerInputField}
+      />
+      <View
+        style={styles.profilePasswordActivityContainerSeparator}
+      >
+
+      </View>
+      <Button
+        color={'rgb(200, 200, 0)'}
+        title={'Изменить пароль'}
+        onPress={() => changePassword()}
+      />
+      <Dialog
+        visible={isDialogVisible}
+        onDismiss={() => setIsDialogVisible(false)}>
+        <Dialog.Title>Сообщение</Dialog.Title>
+        <Dialog.Content>
+          <Text>
+            {
+              dialogMessage
+            }
+          </Text>
+        </Dialog.Content>
+        <Dialog.Actions>
+          <Button title="ОК" onPress={() => setIsDialogVisible(false)} />
+        </Dialog.Actions>
+      </Dialog>
     </View>
   )
 }
@@ -2609,5 +3042,44 @@ const styles = StyleSheet.create({
     color: 'rgb(0, 0, 255)',
     fontSize: 14,
     marginLeft: 75
+  },
+  profilePasswordActivityContainer: {
+
+  },
+  profilePasswordActivityContainerHelpLabel: {
+    
+  },
+  profilePasswordActivityContainerInputField: {
+    borderBottomColor: 'rgb(0, 0, 0)',
+    borderBottomWidth: 1
+  },
+  profilePasswordActivityContainerSeparator: {
+    marginTop: 75,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgb(0, 0, 0)'
+  },
+  profileDataActivityContainer: {
+
+  },
+  profileDataActivityContainerLabel: {
+    color: 'rgb(200, 200, 200)'
+  },
+  profileDataActivityContainerInputField: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgb(0, 0, 0)'
+  },
+  profileDataActivityContainerRow: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  profileDataActivityContainerRowItem: {
+    display: 'flex',
+    flexDirection: 'row',
+    marginLeft: 50,
+    alignItems: 'center'
+  },
+  profileDataActivityContainerRowItemLabel: {
+    marginLeft: 25
   } 
 })
